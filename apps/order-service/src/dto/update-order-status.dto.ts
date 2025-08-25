@@ -1,0 +1,14 @@
+import { IsNotEmpty, IsEnum } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { OrderStatusEnum } from '../enums/order-status.enum';
+
+export class UpdateOrderStatusDto {
+  @ApiProperty({
+    description: 'New order status',
+    example: 'ACCEPTED',
+    enum: OrderStatusEnum,
+  })
+  @IsNotEmpty()
+  @IsEnum(OrderStatusEnum)
+  status: keyof typeof OrderStatusEnum;
+}

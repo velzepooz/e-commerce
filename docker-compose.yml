@@ -1,0 +1,24 @@
+name: e-commerce
+
+services:
+  orders-db:
+    image: mongodb/mongodb-community-server:7.0-ubi9
+    container_name: orders-db
+    restart: always
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: user
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: orders
+    volumes:
+      - orders-db:/data/db
+    networks:
+      - e-commerce-network
+
+volumes:
+  orders-db:
+
+networks:
+  e-commerce-network:
+    driver: bridge
