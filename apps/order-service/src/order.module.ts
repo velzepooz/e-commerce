@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { OrderServiceController } from './controllers/order-service.controller';
-import { OrderServiceService } from './services/order-service.service';
+import { OrderServiceController } from './controllers/order.controller';
+import { OrderServiceService } from './services/order.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { OrderRepository } from './repository/order.repository';
@@ -12,8 +12,8 @@ import { OrderModel, OrderSchema } from './models/order.model';
       isGlobal: true,
       envFilePath:
         process.env.NODE_ENV === 'test'
-          ? 'apps/order-service/.test.env'
-          : 'apps/order-service/.env',
+          ? 'apps/invoice-service/.test.env'
+          : 'apps/invoice-service/.env',
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -28,4 +28,4 @@ import { OrderModel, OrderSchema } from './models/order.model';
   controllers: [OrderServiceController],
   providers: [OrderServiceService, OrderRepository],
 })
-export class OrderServiceModule {}
+export class OrderModule {}

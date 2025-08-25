@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { OrderServiceModule } from './order-service.module';
+import { OrderModule } from './order.module';
 import { ConfigService } from '@nestjs/config';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import {
@@ -30,7 +30,7 @@ export const buildApp = async (app: INestApplication) => {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      skipMissingProperties: true,
+      skipMissingProperties: false,
       transformOptions: {
         enableImplicitConversion: true,
       },
@@ -39,7 +39,7 @@ export const buildApp = async (app: INestApplication) => {
 };
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
-    OrderServiceModule,
+    OrderModule,
     new FastifyAdapter({ logger: true }),
   );
   await buildApp(app);

@@ -91,7 +91,7 @@ export class Faker {
   }
 
   static uid(): string {
-    return chance.guid();
+    return chance.guid({ version: 4 });
   }
 
   static url(): string {

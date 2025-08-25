@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { Order } from '../types/order.type';
+import { Order } from '../types/order-repository.types';
 import type { OrderStatus } from '../enums/order-status.enum';
 import { OrderStatusEnum } from '../enums/order-status.enum';
 
@@ -36,6 +36,14 @@ export class OrderModel extends Document<string> implements Order {
 
   @Prop({ required: true })
   sellerId: string;
+
+  @Prop({ required: true })
+  clientOrderId: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(OrderModel);
+
+OrderSchema.index(
+  { sellerId: 1, clientOrderId: 1, customerId: 1 },
+  { unique: true },
+);

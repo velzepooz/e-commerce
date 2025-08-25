@@ -4,8 +4,8 @@ import {
   IsString,
   IsEnum,
   IsPositive,
-  Min,
   IsMongoId,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -30,8 +30,7 @@ export class OrderDto extends BaseMongoDto {
     minimum: 1,
   })
   @IsNotEmpty()
-  @IsNumber()
-  @Min(1)
+  @IsPositive()
   @Type(() => Number)
   quantity: number;
 
@@ -70,4 +69,29 @@ export class OrderDto extends BaseMongoDto {
   @IsNotEmpty()
   @IsString()
   sellerId: string;
+
+  @ApiProperty({
+    description:
+      'Client-provided unique identifier for idempotent order creation',
+    example: 'a1b2c3d4-e5f6-4a7b-8c9d-0123456789ab',
+    format: 'uuid',
+  })
+  @IsNotEmpty()
+  @IsString()
+  @IsUUID(4, { message: 'clientOrderId must be a valid UUID v4' })
+  clientOrderId: string;
+}
+
+export class PaginatedOrdersDto {
+  @ApiProperty({
+    description: 'List of orders',
+    type: [OrderDto],
+  })
+  data: OrderDto[];
+
+  @ApiProperty({
+    description: 'Total number of orders',
+    type: Number,
+  })
+  total: number;
 }

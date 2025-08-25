@@ -9,6 +9,16 @@ infra-start:
 infra-stop:
 	docker compose down
 
+# Setup MinIO buckets and other infrastructure
+infra-setup: infra-start
+	@echo "Waiting for MinIO to be ready..."
+	@sleep 10
+	@echo "Creating MinIO buckets..."
+	@docker exec minio mc alias set myminio http://localhost:9000 minio minio123
+	@docker exec minio mc mb myminio/orders --ignore-existing || true
+	@echo "Buckets created successfully!"
+	@docker exec minio mc ls myminio
+
 # Install dependencies
 install:
 	pnpm install

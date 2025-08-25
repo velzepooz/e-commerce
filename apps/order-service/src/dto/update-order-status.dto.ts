@@ -1,5 +1,6 @@
 import { IsNotEmpty, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import type { OrderStatus } from '../enums/order-status.enum';
 import { OrderStatusEnum } from '../enums/order-status.enum';
 
 export class UpdateOrderStatusDto {
@@ -10,5 +11,5 @@ export class UpdateOrderStatusDto {
   })
   @IsNotEmpty()
   @IsEnum(OrderStatusEnum)
-  status: keyof typeof OrderStatusEnum;
+  status: OrderStatus;
 }

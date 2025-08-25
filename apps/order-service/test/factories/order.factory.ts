@@ -2,10 +2,10 @@ import {
   OrderStatus,
   OrderStatusEnum,
 } from '../../src/enums/order-status.enum';
-import { Faker } from '../../../../libs/shared/src/test/faker.util';
+import { Faker } from '@app/shared';
 import { TestingModule } from '@nestjs/testing';
 import { OrderRepository } from '../../src/repository/order.repository';
-import { Order } from '../../src/types/order.type';
+import { Order } from '../../src/types/order-repository.types';
 
 export type createOrderType = {
   priceCents?: number;
@@ -13,7 +13,9 @@ export type createOrderType = {
   productId?: string;
   customerId?: string;
   sellerId?: string;
+  clientOrderId?: string;
   status?: OrderStatus;
+  // If true, only return mock data without saving to database
   onlyData?: boolean;
 };
 
@@ -26,6 +28,7 @@ export class OrderFactory {
     productId = Faker.mongoId().toString(),
     customerId = Faker.mongoId().toString(),
     sellerId = Faker.mongoId().toString(),
+    clientOrderId = Faker.uid(),
     status = OrderStatusEnum.CREATED,
     onlyData = false,
   }: createOrderType): Promise<Order> {
@@ -36,6 +39,7 @@ export class OrderFactory {
         productId,
         customerId,
         sellerId,
+        clientOrderId,
         status,
         _id: Faker.mongoId().toString(),
         createdAt: new Date(),
@@ -50,6 +54,7 @@ export class OrderFactory {
       productId,
       customerId,
       sellerId,
+      clientOrderId,
       status,
     });
     return order;

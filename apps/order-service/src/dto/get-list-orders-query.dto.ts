@@ -1,23 +1,31 @@
 import {
   IsOptional,
-  IsString,
   IsNumber,
   IsEnum,
   Min,
   Max,
+  IsMongoId,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { OrderStatusEnum } from '../enums/order-status.enum';
 
-export class ListOrdersQueryDto {
+export class GetListOrdersQueryDto {
   @ApiPropertyOptional({
     description: 'Filter by seller ID',
     example: '507f1f77bcf86cd799439013',
   })
   @IsOptional()
-  @IsString()
+  @IsMongoId()
   sellerId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by customer ID',
+    example: '507f1f77bcf86cd799439013',
+  })
+  @IsOptional()
+  @IsMongoId()
+  customerId?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by order status',

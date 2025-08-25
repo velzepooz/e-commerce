@@ -19,6 +19,15 @@
         "tsConfigPath": "libs/health-check/tsconfig.lib.json"
       }
     },
+    "invoice-service": {
+      "type": "application",
+      "root": "apps/invoice-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/invoice-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/invoice-service/tsconfig.app.json"
+      }
+    },
     "order-service": {
       "type": "application",
       "root": "apps/order-service",
@@ -26,6 +35,15 @@
       "sourceRoot": "apps/order-service/src",
       "compilerOptions": {
         "tsConfigPath": "apps/order-service/tsconfig.app.json"
+      }
+    },
+    "s3": {
+      "type": "library",
+      "root": "libs/s3",
+      "entryFile": "index",
+      "sourceRoot": "libs/s3/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/s3/tsconfig.lib.json"
       }
     },
     "shared": {

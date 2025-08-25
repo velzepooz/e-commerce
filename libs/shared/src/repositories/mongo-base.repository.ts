@@ -122,4 +122,8 @@ export abstract class MongoBaseRepository<TModel extends MongoBaseType> {
 
     return !!doc;
   }
+
+  generateObjectId(): string {
+    return new mongoose.Types.ObjectId().toString();
+  }
 }
