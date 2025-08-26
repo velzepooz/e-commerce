@@ -1,20 +1,8 @@
-TODO:
-- [ ] Improvement docs
-- [ ] Test
-
-Add to doc
-- [ ] Recommended indexes
-- [ ] Error handling
-- [ ] Validations
-- [ ] Auth
-- [ ] Whole order update
-- [ ] Role base access
-
 # E-Commerce Platform
 
 A microservices-based e-commerce platform built with NestJS, featuring order management, invoice processing, and event-driven architecture.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 The platform consists of two core microservices and shared infrastructure:
 
@@ -31,7 +19,7 @@ The platform consists of two core microservices and shared infrastructure:
 - **API Documentation**: Swagger/OpenAPI
 - **Containerization**: Docker & Docker Compose
 
-## 🚀 Services
+## Services
 
 ### Order Service (`apps/order-service/`)
 
@@ -82,7 +70,7 @@ The platform consists of two core microservices and shared infrastructure:
 
 **Port**: 3010
 
-## 🗄️ Infrastructure
+## Infrastructure
 
 ### MongoDB
 - **Purpose**: Primary data store for both services
@@ -107,7 +95,7 @@ The platform consists of two core microservices and shared infrastructure:
 - **Buckets**: `orders` (for invoice storage)
 - **Console**: http://localhost:9001
 
-## 🔄 Event Flow
+## Event Flow
 
 ### Order Status Change Workflow
 
@@ -130,7 +118,7 @@ interface OrderStatusChangedEventPayload {
 }
 ```
 
-## 🛠️ Development Setup
+## Development Setup
 
 ### Prerequisites
 
@@ -200,7 +188,7 @@ make lint           # Run ESLint
 make install        # Install dependencies
 ```
 
-## 📊 Service URLs & Health Checks
+## Service URLs & Health Checks
 
 After running `make infra-start`, services are available at:
 
@@ -217,7 +205,7 @@ After running `make infra-start`, services are available at:
   - API: http://localhost:3010/invoices/docs
   - Health: http://localhost:3010/healthz
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -252,7 +240,7 @@ RABBITMQ_URL=amqp://user:password@localhost:5672
 RABBIT_PREFETCH=50
 ```
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ### Test Structure
 - **Unit Tests**: Service and repository layer testing
@@ -265,7 +253,7 @@ RABBIT_PREFETCH=50
 - Factory functions for creating test entities
 - Database seeding and cleanup utilities
 
-## 🚀 Deployment
+## Deployment
 
 ### Local Development
 ```bash
@@ -286,13 +274,13 @@ make infra-start  # Start all services
 make infra-stop # Stop all services
 ```
 
-## 📈 Monitoring & Observability
+## Monitoring & Observability
 
 ### Health Checks
 - Service health endpoints (`/healthz`)
 - Database connection status
 
-## 🔒 Security Features
+## Security Features
 
 ### Input Validation
 - DTO-based request validation
@@ -310,7 +298,7 @@ make infra-stop # Stop all services
 - Proper HTTP status codes
 - Validation error details
 
-## 🤝 Development Workflow
+## Development Workflow
 
 1. **First time setup**: `make start` (infrastructure + dev)
 2. **Daily development**: `make dev`
@@ -320,13 +308,13 @@ make infra-stop # Stop all services
 6. **Cleanup**: `make infra-clean` (stop containers + remove volumes)
 
 
-## 📚 Documentation
+## Documentation
 
 - **Order Service**: [apps/order-service/README.md](apps/order-service/README.md)
 - **Invoice Service**: [apps/invoice-service/README.md](apps/invoice-service/README.md)
 - **API Documentation**: Available at service URLs when running
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -347,13 +335,8 @@ make infra-stop # Stop all services
    - Verify RabbitMQ is running on port 5672
    - Check queue configuration and permissions
 
-## 🔮 Future Improvements
+## Future Improvements
 
-- [ ] Authentication & Authorization
-- [ ] Role-based access control
-- [ ] Enhanced error handling
-- [ ] Additional validations for events
-- [ ] Whole order update capabilities
-- [ ] Recommended database indexes
-- [ ] Performance monitoring
-- [ ] Distributed tracing
+For detailed improvement proposals and implementation hints, see [Future Improvements](FUTURE_IMPROVEMENTS.md).
+
+
