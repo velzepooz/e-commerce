@@ -3,10 +3,15 @@ import {
   NotFoundException,
   UnprocessableEntityException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { OrderServiceService } from '../order.service';
+import {
+  ORDER_EVENT_PUBLISHER_CLIENT,
+  OrderStatusEventPublisherService,
+} from '../order-event-publisher.service';
 import { OrderRepository } from '../../repository/order.repository';
-import { OrderStatusEnum } from '../../enums/order-status.enum';
+import { OrderStatusEnum } from '../../../../../libs/shared/src/enums/order-status.enum';
 import { OrderFactory } from '../../../test/factories/order.factory';
 import { OrderModel } from '../../models/order.model';
 import { Order } from '../../types/order-repository.types';
@@ -35,6 +40,18 @@ describe('OrderServiceService', () => {
         {
           provide: OrderRepository,
           useValue: mockRepository,
+        },
+        {
+          provide: ORDER_EVENT_PUBLISHER_CLIENT,
+          useValue: {
+            emit: jest.fn(),
+          },
+        },
+        {
+          provide: OrderStatusEventPublisherService,
+          useValue: {
+            emitOrderStatusChanged: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -343,7 +360,7 @@ describe('OrderServiceService', () => {
       );
     });
 
-    it('Should throw ConflictException for general database errors', async () => {
+    it('Should throw InternalServerErrorException for general database errors', async () => {
       const orderId = mockOrder._id;
       const dbError = new Error('Database connection failed');
 
@@ -354,7 +371,7 @@ describe('OrderServiceService', () => {
         orderService.updateStatus(orderId, {
           status: OrderStatusEnum.ACCEPTED,
         }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(InternalServerErrorException);
 
       expect(orderRepository.findById).toHaveBeenCalledWith(orderId);
       expect(orderRepository.findOneAndUpdate).toHaveBeenCalledWith(
@@ -739,13 +756,13 @@ describe('OrderServiceService', () => {
       };
 
       const expectedResult = {
-        orders: mockOrders,
+        data: mockOrders,
         total: 2,
       };
 
       orderRepository.findPaginated.mockResolvedValue(expectedResult);
 
-      const result = await orderService.getListOrders(query);
+      const result = await orderService.getOrdersList(query);
 
       expect(orderRepository.findPaginated).toHaveBeenCalledWith(query);
       expect(result).toEqual(expectedResult);

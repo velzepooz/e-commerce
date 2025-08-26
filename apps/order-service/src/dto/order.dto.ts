@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { OrderStatusEnum } from '../enums/order-status.enum';
+import { OrderStatusEnum } from '../../../../libs/shared/src/enums/order-status.enum';
 import { BaseMongoDto } from '@app/shared';
 
 export class OrderDto extends BaseMongoDto {

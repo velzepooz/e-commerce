@@ -1,5 +1,4 @@
-import { MongoBaseType } from '@app/shared';
-import { OrderStatus } from '../enums/order-status.enum';
+import { type OrderStatus, MongoBaseType } from '@app/shared';
 
 export type Order = MongoBaseType & {
   status: OrderStatus;

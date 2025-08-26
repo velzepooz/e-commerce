@@ -1,7 +1,7 @@
 import {
   OrderStatus,
   OrderStatusEnum,
-} from '../../src/enums/order-status.enum';
+} from '../../../../libs/shared/src/enums/order-status.enum';
 import { Faker } from '@app/shared';
 import { TestingModule } from '@nestjs/testing';
 import { OrderRepository } from '../../src/repository/order.repository';

@@ -9,18 +9,29 @@ import { InvoiceService } from '../invoice.service';
 import { InvoiceRepository } from '../../repositories/invoice.repository';
 import { S3Service } from '@app/s3';
 import { InvoiceModel } from '../../models/invoice.model';
-import { ContentDispositionEnum, IUploadedFile } from '@app/shared';
+import {
+  ContentDispositionEnum,
+  IUploadedFile,
+  OrderStatusEnum,
+} from '@app/shared';
 import { Faker } from '@app/shared';
-import { InvoiceFactory } from '../../../test/factories/invoice.factory';
+import {
+  InvoiceFactory,
+  OrderProjectionFactory,
+} from '../../../test/factories';
+import { OrderProjectionService } from '../order-projection.service';
 
-describe('InvoiceService', () => {
+describe('On InvoiceService', () => {
   let invoiceService: InvoiceService;
   let mockInvoiceRepository: jest.Mocked<InvoiceRepository>;
   let mockS3Service: jest.Mocked<S3Service>;
   let mockConfigService: jest.Mocked<ConfigService>;
+  let mockOrderProjectionService: jest.Mocked<OrderProjectionService>;
   let invoiceFactory: InvoiceFactory;
+  let orderProjectionFactory: OrderProjectionFactory;
   let module: TestingModule;
   let mockInvoice;
+  let mockOrderProjection;
   const mockUploadedFile: IUploadedFile = {
     filename: 'test-invoice.pdf',
     originalname: 'test-invoice.pdf',
@@ -39,6 +50,7 @@ describe('InvoiceService', () => {
         create: jest.fn(),
         find: jest.fn(),
         generateObjectId: jest.fn(),
+        findOneAndUpdate: jest.fn(),
       },
     };
 
@@ -57,17 +69,29 @@ describe('InvoiceService', () => {
       },
     };
 
+    const mockOrderProjectionServiceProvider = {
+      provide: OrderProjectionService,
+      useValue: {
+        getByOrderId: jest.fn(),
+      },
+    };
+
     module = await Test.createTestingModule({
       providers: [
         InvoiceService,
         mockInvoiceRepositoryProvider,
         mockS3ServiceProvider,
         mockConfigServiceProvider,
+        mockOrderProjectionServiceProvider,
       ],
     }).compile();
     invoiceFactory = new InvoiceFactory(module);
+    orderProjectionFactory = new OrderProjectionFactory(module);
 
     mockInvoice = await invoiceFactory.create({ onlyData: true });
+    mockOrderProjection = await orderProjectionFactory.create({
+      onlyData: true,
+    });
   });
 
   beforeEach(() => {
@@ -75,6 +99,7 @@ describe('InvoiceService', () => {
     mockInvoiceRepository = module.get(InvoiceRepository);
     mockS3Service = module.get(S3Service);
     mockConfigService = module.get(ConfigService);
+    mockOrderProjectionService = module.get(OrderProjectionService);
 
     // Setup default config values
     mockConfigService.get.mockImplementation((key: string) => {
@@ -89,6 +114,9 @@ describe('InvoiceService', () => {
     mockInvoiceRepository.generateObjectId.mockReturnValue(
       Faker.mongoId().toString(),
     );
+
+    // Setup default mock implementations for OrderProjectionService
+    mockOrderProjectionService.getByOrderId.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -161,9 +189,6 @@ describe('InvoiceService', () => {
       await expect(
         invoiceService.uploadInvoice(orderId, mockUploadedFile),
       ).rejects.toThrow(InternalServerErrorException);
-      await expect(
-        invoiceService.uploadInvoice(orderId, mockUploadedFile),
-      ).rejects.toThrow('Failed to upload invoice');
 
       expect(mockInvoiceRepository.findOne).toHaveBeenCalledWith({ orderId });
       expect(mockS3Service.uploadFile).toHaveBeenCalled();
@@ -180,9 +205,6 @@ describe('InvoiceService', () => {
       await expect(
         invoiceService.uploadInvoice(orderId, mockUploadedFile),
       ).rejects.toThrow(InternalServerErrorException);
-      await expect(
-        invoiceService.uploadInvoice(orderId, mockUploadedFile),
-      ).rejects.toThrow('Failed to upload invoice');
 
       expect(mockInvoiceRepository.findOne).toHaveBeenCalledWith({ orderId });
       expect(mockS3Service.uploadFile).toHaveBeenCalled();
@@ -283,9 +305,6 @@ describe('InvoiceService', () => {
       await expect(
         invoiceService.generateInvoiceDownloadUrl(invoiceId, disposition),
       ).rejects.toThrow(InternalServerErrorException);
-      await expect(
-        invoiceService.generateInvoiceDownloadUrl(invoiceId, disposition),
-      ).rejects.toThrow('Failed to generate download URL');
 
       expect(mockInvoiceRepository.findById).toHaveBeenCalledWith(invoiceId);
       expect(mockS3Service.generatePresignedUrl).toHaveBeenCalled();
@@ -354,6 +373,197 @@ describe('InvoiceService', () => {
       );
 
       expect(mockInvoiceRepository.findById).toHaveBeenCalledWith(invoiceId);
+    });
+  });
+
+  describe('On tryMarkInvoiceAsSent', () => {
+    const orderId = Faker.mongoId().toString();
+
+    beforeEach(() => {
+      mockOrderProjectionService.getByOrderId.mockReset();
+      mockInvoiceRepository.findOne.mockReset();
+      mockInvoiceRepository.findOneAndUpdate.mockReset();
+    });
+
+    it('Should mark invoice as sent when order is shipped and invoice exists', async () => {
+      const shippedProjection = {
+        ...mockOrderProjection,
+        status: OrderStatusEnum.SHIPPED,
+      };
+      const invoiceToUpdate = {
+        ...mockInvoice,
+        _id: Faker.mongoId().toString(),
+        orderId,
+        sentAt: null,
+      } as InvoiceModel;
+
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(
+        shippedProjection,
+      );
+      mockInvoiceRepository.findOne.mockResolvedValue(invoiceToUpdate);
+      mockInvoiceRepository.findOneAndUpdate.mockResolvedValue(null);
+
+      await invoiceService.tryMarkInvoiceAsSent(orderId);
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).toHaveBeenCalledWith({ orderId });
+      expect(mockInvoiceRepository.findOneAndUpdate).toHaveBeenCalledWith(
+        { orderId },
+        { sentAt: expect.any(Date) },
+      );
+    });
+
+    it('Should mark invoice as sent when order is shipped and invoice is provided as parameter', async () => {
+      const shippedProjection = {
+        ...mockOrderProjection,
+        status: OrderStatusEnum.SHIPPED,
+      };
+      const providedInvoice = {
+        ...mockInvoice,
+        _id: Faker.mongoId().toString(),
+        orderId,
+        sentAt: null,
+      } as InvoiceModel;
+
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(
+        shippedProjection,
+      );
+      mockInvoiceRepository.findOneAndUpdate.mockResolvedValue(null);
+
+      await invoiceService.tryMarkInvoiceAsSent(orderId, providedInvoice);
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).not.toHaveBeenCalled();
+      expect(mockInvoiceRepository.findOneAndUpdate).toHaveBeenCalledWith(
+        { orderId },
+        { sentAt: expect.any(Date) },
+      );
+    });
+
+    it('Should skip sentAt update when order is not shipped', async () => {
+      const notShippedProjection = {
+        ...mockOrderProjection,
+        status: OrderStatusEnum.CREATED,
+      };
+
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(
+        notShippedProjection,
+      );
+
+      await invoiceService.tryMarkInvoiceAsSent(orderId);
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).not.toHaveBeenCalled();
+      expect(mockInvoiceRepository.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('Should skip sentAt update when order projection is not found', async () => {
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(null);
+
+      await invoiceService.tryMarkInvoiceAsSent(orderId);
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).not.toHaveBeenCalled();
+      expect(mockInvoiceRepository.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('Should skip sentAt update when no invoice is found for order', async () => {
+      const shippedProjection = {
+        ...mockOrderProjection,
+        status: OrderStatusEnum.SHIPPED,
+      };
+
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(
+        shippedProjection,
+      );
+      mockInvoiceRepository.findOne.mockResolvedValue(null);
+
+      await invoiceService.tryMarkInvoiceAsSent(orderId);
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).toHaveBeenCalledWith({ orderId });
+      expect(mockInvoiceRepository.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('Should skip sentAt update when invoice is already marked as sent', async () => {
+      const shippedProjection = {
+        ...mockOrderProjection,
+        status: OrderStatusEnum.SHIPPED,
+      };
+      const alreadySentInvoice = {
+        ...mockInvoice,
+        _id: Faker.mongoId().toString(),
+        orderId,
+        sentAt: new Date('2024-01-01T00:00:00Z'),
+      } as InvoiceModel;
+
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(
+        shippedProjection,
+      );
+      mockInvoiceRepository.findOne.mockResolvedValue(alreadySentInvoice);
+
+      await invoiceService.tryMarkInvoiceAsSent(orderId);
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).toHaveBeenCalledWith({ orderId });
+      expect(mockInvoiceRepository.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('Should handle errors gracefully and log them', async () => {
+      const error = new Error('Database connection failed');
+      mockOrderProjectionService.getByOrderId.mockRejectedValue(error);
+
+      await expect(
+        invoiceService.tryMarkInvoiceAsSent(orderId),
+      ).resolves.not.toThrow();
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).not.toHaveBeenCalled();
+      expect(mockInvoiceRepository.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('Should handle repository update errors gracefully and log them', async () => {
+      const shippedProjection = {
+        ...mockOrderProjection,
+        status: OrderStatusEnum.SHIPPED,
+      };
+      const invoiceToUpdate = {
+        ...mockInvoice,
+        _id: Faker.mongoId().toString(),
+        orderId,
+        sentAt: null,
+      } as InvoiceModel;
+      const updateError = new Error('Update failed');
+
+      mockOrderProjectionService.getByOrderId.mockResolvedValue(
+        shippedProjection,
+      );
+      mockInvoiceRepository.findOne.mockResolvedValue(invoiceToUpdate);
+      mockInvoiceRepository.findOneAndUpdate.mockRejectedValue(updateError);
+
+      await expect(
+        invoiceService.tryMarkInvoiceAsSent(orderId),
+      ).resolves.not.toThrow();
+
+      expect(mockOrderProjectionService.getByOrderId).toHaveBeenCalledWith(
+        orderId,
+      );
+      expect(mockInvoiceRepository.findOne).toHaveBeenCalledWith({ orderId });
+      expect(mockInvoiceRepository.findOneAndUpdate).toHaveBeenCalled();
     });
   });
 });

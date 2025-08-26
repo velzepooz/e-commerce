@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import {
   PutObjectCommand,
   S3Client,
@@ -31,7 +35,8 @@ export type S3PresignedUrlParams = {
 
 @Injectable()
 export class S3Service {
-  private readonly s3Client: S3Client;
+  private readonly _logger = new Logger(S3Service.name);
+  private readonly _s3Client: S3Client;
 
   constructor(config: S3Config) {
     if (
@@ -40,9 +45,10 @@ export class S3Service {
       !config.accessKeyId ||
       !config.secretAccessKey
     ) {
-      throw new InternalServerErrorException('Invalid S3 configuration');
+      this._logger.error('Invalid S3 configuration', config);
+      throw new InternalServerErrorException('Something went wrong');
     }
-    this.s3Client = new S3Client({
+    this._s3Client = new S3Client({
       endpoint: config.endpoint,
       region: config.region,
       credentials: {
@@ -63,11 +69,10 @@ export class S3Service {
         ...(params.contentLength && { ContentLength: params.contentLength }),
       });
 
-      await this.s3Client.send(command);
+      await this._s3Client.send(command);
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to upload file to S3: ${error.message}`,
-      );
+      this._logger.error('Failed to upload file to S3', error);
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 
@@ -82,15 +87,14 @@ export class S3Service {
         }),
       });
 
-      const signedUrl = await getSignedUrl(this.s3Client, command, {
+      const signedUrl = await getSignedUrl(this._s3Client, command, {
         expiresIn: params.expiresIn || 5 * 60,
       });
 
       return signedUrl;
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to generate presigned URL: ${error.message}`,
-      );
+      this._logger.error('Failed to generate presigned URL', error);
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 }

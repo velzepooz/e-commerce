@@ -1,0 +1,23 @@
+{
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": ".",
+    "testEnvironment": "node",
+    "testRegex": ".*\\.(e2e-spec|controller\\.spec)\\.ts$",
+    "transform": {
+        "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+        "^@app/shared(|/.*)$": "<rootDir>/libs/shared/src/$1",
+        "^@app/s3(|/.*)$": "<rootDir>/libs/s3/src/$1"
+    },
+    "roots": [
+        "<rootDir>/apps/",
+        "<rootDir>/libs/"
+    ],
+    "collectCoverageFrom": [
+        "apps/**/*.(t|j)s",
+        "libs/**/*.(t|j)s"
+    ],
+    "coverageDirectory": "./coverage",
+    "testTimeout": 30000
+}

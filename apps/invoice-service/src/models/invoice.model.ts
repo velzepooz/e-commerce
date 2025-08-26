@@ -15,7 +15,7 @@ export class InvoiceModel extends Document<string> implements Invoice {
   @Prop({ required: true, unique: true, index: true })
   orderId: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true })
   url: string;
 
   @Prop({ required: false, default: null, type: Date })

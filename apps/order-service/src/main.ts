@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { OrderModule } from './order.module';
 import { ConfigService } from '@nestjs/config';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -11,32 +11,14 @@ import {
   applyMiddlewares,
   AppMiddlewareInterface,
 } from '@app/shared';
+import { addValidationPipe } from '@app/shared';
 
-const middlewares: AppMiddlewareInterface[] = [
-  addSwagger({
-    title: 'Order Service',
-    description: 'Order Service API for the marketplace platform',
-    version: '1.0',
-    path: 'orders/docs',
-  }),
-];
+const middlewares: AppMiddlewareInterface[] = [addSwagger, addValidationPipe];
 
 export const buildApp = async (app: INestApplication) => {
   await applyMiddlewares(app, middlewares);
-
-  // Global validation pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      skipMissingProperties: false,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
 };
+
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     OrderModule,

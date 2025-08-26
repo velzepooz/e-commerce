@@ -1,8 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Order } from '../types/order-repository.types';
-import type { OrderStatus } from '../enums/order-status.enum';
-import { OrderStatusEnum } from '../enums/order-status.enum';
+import { OrderStatusEnum, type OrderStatus } from '@app/shared';
 
 const ORDER_COLLECTION_NAME = 'Orders';
 

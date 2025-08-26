@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { InvoiceModule } from './invoice.module';
 import { ConfigService } from '@nestjs/config';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -11,34 +11,20 @@ import {
   applyMiddlewares,
   AppMiddlewareInterface,
   addMultipart,
+  addValidationPipe,
 } from '@app/shared';
+import { MicroserviceOptions } from '@nestjs/microservices';
 
 const middlewares: AppMiddlewareInterface[] = [
-  addSwagger({
-    title: 'Invoice Service',
-    description: 'Invoice Service API for the marketplace platform',
-    version: '1.0',
-    path: 'invoices/docs',
-  }),
+  addSwagger,
   addMultipart,
+  addValidationPipe,
 ];
 
 export const buildApp = async (app: INestApplication) => {
   await applyMiddlewares(app, middlewares);
-
-  // Global validation pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      skipMissingProperties: false,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
 };
+
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     InvoiceModule,
@@ -47,6 +33,12 @@ async function bootstrap() {
   await buildApp(app);
 
   const configService = app.get<ConfigService>(ConfigService);
+
+  app.connectMicroservice<MicroserviceOptions>(
+    configService.get('orderStatusQueue') as MicroserviceOptions,
+  );
+  await app.startAllMicroservices();
+
   await app.listen({
     port: configService.get('PORT') ?? 3000,
     host: configService.get('HOST') ?? '0.0.0.0',

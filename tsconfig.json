@@ -22,12 +22,6 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/health-check": [
-        "libs/health-check/src"
-      ],
-      "@app/health-check/*": [
-        "libs/health-check/src/*"
-      ],
       "@app/shared": [
         "libs/shared/src"
       ],

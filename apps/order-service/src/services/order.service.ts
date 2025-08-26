@@ -4,6 +4,7 @@ import {
   UnprocessableEntityException,
   ConflictException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { OrderRepository } from '../repository/order.repository';
 import {
@@ -12,12 +13,13 @@ import {
   getListOrdersType,
   updateOrderStatusType,
 } from '../types/order-service.types';
-import { OrderStatus, OrderStatusEnum } from '../enums/order-status.enum';
+import { type OrderStatus, OrderStatusEnum } from '@app/shared';
 import { Order } from '../types/order-repository.types';
+import { OrderStatusEventPublisherService } from './order-event-publisher.service';
 
 @Injectable()
 export class OrderServiceService {
-  private readonly logger = new Logger(OrderServiceService.name);
+  private readonly _logger = new Logger(OrderServiceService.name);
 
   private readonly ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
     [OrderStatusEnum.CREATED]: [
@@ -30,21 +32,24 @@ export class OrderServiceService {
     [OrderStatusEnum.SHIPPED]: [],
   };
 
-  constructor(private readonly orderRepository: OrderRepository) { }
+  constructor(
+    private readonly _orderRepository: OrderRepository,
+    private readonly _orderEventPublisher: OrderStatusEventPublisherService,
+  ) {}
 
   async create(
     createOrder: createOrderType,
   ): Promise<{ order: Order; created: boolean }> {
     const { sellerId, clientOrderId, customerId } = createOrder;
 
-    const existingOrder = await this.orderRepository.findOne({
+    const existingOrder = await this._orderRepository.findOne({
       sellerId,
       clientOrderId,
       customerId,
     });
 
     if (existingOrder) {
-      this.logger.log(
+      this._logger.debug(
         `Order with sellerId ${sellerId}, clientOrderId ${clientOrderId}, customerId ${customerId} already exists`,
       );
 
@@ -52,18 +57,18 @@ export class OrderServiceService {
     }
 
     try {
-      const newOrder = await this.orderRepository.create(createOrder);
-      this.logger.log(
+      const newOrder = await this._orderRepository.create(createOrder);
+      this._logger.log(
         `New order created with sellerId ${sellerId}, clientOrderId ${clientOrderId}, orderId ${newOrder._id}`,
       );
       return { order: newOrder, created: true };
     } catch (error) {
       if (this._isDuplicateKeyError(error)) {
-        this.logger.log(
+        this._logger.log(
           `Duplicate key error for sellerId ${sellerId}, clientOrderId ${clientOrderId} - fetching existing order`,
         );
 
-        const existingOrder = await this.orderRepository.findOne({
+        const existingOrder = await this._orderRepository.findOne({
           sellerId,
           clientOrderId,
           customerId,
@@ -73,7 +78,7 @@ export class OrderServiceService {
           return { order: existingOrder, created: false };
         }
 
-        this.logger.error(
+        this._logger.error(
           `Duplicate key error but no existing order found for sellerId ${sellerId}, clientOrderId ${clientOrderId}`,
         );
         throw new ConflictException(
@@ -81,7 +86,7 @@ export class OrderServiceService {
         );
       }
 
-      this.logger.error(
+      this._logger.error(
         `Order creation failed for sellerId ${sellerId}, clientOrderId ${clientOrderId}`,
         error,
       );
@@ -90,7 +95,7 @@ export class OrderServiceService {
   }
 
   async getById(id: string): Promise<Order> {
-    const order = await this.orderRepository.findById(id);
+    const order = await this._orderRepository.findById(id);
 
     if (!order) {
       throw new NotFoundException('Order not found');
@@ -99,8 +104,8 @@ export class OrderServiceService {
     return order;
   }
 
-  async getListOrders(query: getListOrdersType): Promise<PaginatedOrders> {
-    return await this.orderRepository.findPaginated(query);
+  async getOrdersList(query: getListOrdersType): Promise<PaginatedOrders> {
+    return await this._orderRepository.findPaginated(query);
   }
 
   async updateStatus(
@@ -109,23 +114,23 @@ export class OrderServiceService {
   ): Promise<Order> {
     const { status: newStatus } = updateOrderStatus;
 
-    const currentOrder = await this.orderRepository.findById(id);
+    const currentOrder = await this._orderRepository.findById(id);
     if (!currentOrder) {
-      this.logger.warn(`Order update failed: Order ${id} not found`);
+      this._logger.warn(`Order update failed: Order ${id} not found`);
       throw new NotFoundException('Order not found');
     }
 
     const currentStatus = currentOrder.status;
 
     if (currentStatus === newStatus) {
-      this.logger.log(
+      this._logger.debug(
         `Order ${id}: Idempotent update - status already ${currentStatus}`,
       );
       return currentOrder;
     }
 
     if (!this._isValidTransition(currentStatus, newStatus)) {
-      this.logger.warn(
+      this._logger.warn(
         `Order ${id}: Invalid transition from ${currentStatus} to ${newStatus}`,
       );
       throw new UnprocessableEntityException(
@@ -134,7 +139,7 @@ export class OrderServiceService {
     }
 
     try {
-      const updatedOrder = await this.orderRepository.findOneAndUpdate(
+      const updatedOrder = await this._orderRepository.findOneAndUpdate(
         {
           _id: id,
           status: currentStatus,
@@ -145,19 +150,21 @@ export class OrderServiceService {
       );
 
       if (!updatedOrder) {
-        this.logger.error(`Order ${id}: Update operation returned null`);
+        this._logger.error(`Order ${id}: Update operation returned null`);
         throw new ConflictException(
           'Order update failed - order may have been modified',
         );
       }
 
-      this.logger.log(
+      this._logger.log(
         `Order ${id}: Status successfully updated from ${currentStatus} to ${newStatus}`,
       );
 
+      this._orderEventPublisher.emitOrderStatusChanged(id, newStatus);
+
       return updatedOrder;
     } catch (error) {
-      this.logger.error(
+      this._logger.error(
         `Order ${id}: Database error during status update`,
         error,
       );
@@ -166,7 +173,7 @@ export class OrderServiceService {
         throw error;
       }
 
-      throw new ConflictException('Order update failed due to database error');
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 

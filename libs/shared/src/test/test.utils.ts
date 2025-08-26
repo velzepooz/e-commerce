@@ -1,17 +1,13 @@
 import { INestApplication, Injectable } from '@nestjs/common';
 import mongoose, { Connection } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
-import { ModuleRef } from '@nestjs/core';
 
 @Injectable()
 export class TestUtils {
   /**
    * Creates an instance of TestUtils
    */
-  constructor(
-    @InjectConnection() public connection: Connection,
-    private moduleRef: ModuleRef,
-  ) {
+  constructor(@InjectConnection() public connection: Connection) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('ERROR-TEST-UTILS-ONLY-FOR-TESTS');
     }

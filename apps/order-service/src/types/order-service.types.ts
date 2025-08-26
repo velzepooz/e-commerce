@@ -1,4 +1,4 @@
-import { OrderStatus } from '../enums/order-status.enum';
+import { type OrderStatus } from '@app/shared';
 import { Order } from './order-repository.types';
 
 export type PaginatedOrders = {

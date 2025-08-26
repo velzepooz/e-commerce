@@ -6,7 +6,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InvoiceDto } from '../dto';
 import { InvoiceRepository } from '../repositories/invoice.repository';
 import { S3Service } from '@app/s3';
 import { ConfigService } from '@nestjs/config';
@@ -14,9 +13,11 @@ import { Invoice } from '../types/invoice-repository.types';
 import {
   ContentDispositionEnum,
   IUploadedFile,
+  OrderStatusEnum,
   type ContentDisposition,
 } from '@app/shared';
 import { getInvoicesType } from '../types/invoice-service.types';
+import { OrderProjectionService } from './order-projection.service';
 
 @Injectable()
 export class InvoiceService {
@@ -28,13 +29,13 @@ export class InvoiceService {
     private readonly _s3Service: S3Service,
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _configService: ConfigService,
+    private readonly _orderProjectionService: OrderProjectionService,
   ) {
     this._bucketName =
       this._configService.get<string>('INVOICE_BUCKET_NAME') || 'invoice';
     this._defaultUrlTtlSec =
       this._configService.get<number>('S3_URL_TTL_SEC_DEFAULT') || 5 * 60;
   }
-  s;
 
   async uploadInvoice(orderId: string, file: IUploadedFile): Promise<Invoice> {
     try {
@@ -59,13 +60,13 @@ export class InvoiceService {
         sentAt: null,
       });
 
-      this._logger.log('Invoice uploaded event:', {
+      this._logger.log('Invoice uploaded:', {
         invoiceId: invoice._id,
         orderId,
         fileName,
       });
 
-      this._checkAndEmitSentEvent(invoice);
+      await this.tryMarkInvoiceAsSent(orderId, invoice);
 
       return invoice;
     } catch (error) {
@@ -76,14 +77,13 @@ export class InvoiceService {
         throw error;
       }
 
-      // Log error and mask sensitive information
       this._logger.error('Error uploading invoice:', {
         orderId,
         error: error.message,
         stack: error.stack,
       });
 
-      throw new InternalServerErrorException('Failed to upload invoice');
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 
@@ -114,7 +114,7 @@ export class InvoiceService {
         Date.now() + this._defaultUrlTtlSec * 1000,
       ).toISOString();
 
-      this._logger.log('Generated pre-signed URL for invoice:', {
+      this._logger.debug('Generated pre-signed URL for invoice:', {
         invoiceId,
         orderId: invoice.orderId,
         objectKey: invoice.url,
@@ -135,7 +135,7 @@ export class InvoiceService {
         stack: error.stack,
       });
 
-      throw new InternalServerErrorException('Failed to generate download URL');
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 
@@ -143,12 +143,69 @@ export class InvoiceService {
     return this._invoiceRepository.find(query);
   }
 
-  async getInvoiceById(_id: string): Promise<InvoiceDto> {
-    const invoice = await this._invoiceRepository.findById(_id);
+  async getInvoiceById(id: string): Promise<Invoice> {
+    const invoice = await this._invoiceRepository.findById(id);
     if (!invoice) {
       throw new NotFoundException(`Invoice not found`);
     }
     return invoice;
+  }
+
+  async tryMarkInvoiceAsSent(
+    orderId: string,
+    invoice?: Invoice,
+  ): Promise<void> {
+    try {
+      const projection =
+        await this._orderProjectionService.getByOrderId(orderId);
+      if (!projection || projection.status !== OrderStatusEnum.SHIPPED) {
+        this._logger.debug('Order not shipped, skipping sentAt update', {
+          orderId,
+          status: projection?.status,
+        });
+        return;
+      }
+
+      const invoiceToCheck =
+        invoice ?? (await this._invoiceRepository.findOne({ orderId }));
+      if (!invoiceToCheck) {
+        this._logger.debug(
+          'No invoice found for order, skipping sentAt update',
+          { orderId },
+        );
+        return;
+      }
+
+      if (invoiceToCheck.sentAt) {
+        this._logger.debug('Invoice already marked as sent, skipping update', {
+          orderId,
+          invoiceId: invoiceToCheck._id,
+          sentAt: invoiceToCheck.sentAt,
+        });
+        return;
+      }
+
+      await this._markInvoiceAsSent(orderId);
+
+      this._logger.log('Successfully marked invoice as sent', {
+        orderId,
+        invoiceId: invoiceToCheck._id,
+      });
+    } catch (error) {
+      this._logger.error('Failed to mark invoice as sent', {
+        orderId,
+        error: error.message,
+        stack: error.stack,
+      });
+    }
+  }
+
+  private async _markInvoiceAsSent(orderId: string): Promise<void> {
+    const now = new Date();
+    await this._invoiceRepository.findOneAndUpdate(
+      { orderId },
+      { sentAt: now },
+    );
   }
 
   private async _uploadToS3(
@@ -164,24 +221,8 @@ export class InvoiceService {
         contentLength: file.buffer.length,
       });
     } catch (error) {
-      this._logger.error('MinIO upload error:', error);
-      throw new InternalServerErrorException(
-        'Failed to upload file to storage',
-      );
-    }
-  }
-
-  private _checkAndEmitSentEvent(invoice: Invoice): void {
-    // TODO: Implement order status check logic
-    // This would typically involve calling the order service to check if the order is shipped
-    // For now, we'll just emit the event if sentAt is set
-
-    if (invoice.sentAt) {
-      this._logger.log('Invoice sent event:', {
-        invoiceId: invoice._id,
-        orderId: invoice.orderId,
-        sentAt: invoice.sentAt,
-      });
+      this._logger.error('S3 upload error:', error);
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 }

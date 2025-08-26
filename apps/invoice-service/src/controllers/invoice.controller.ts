@@ -14,8 +14,6 @@ import {
   ApiOperation,
   ApiConsumes,
   ApiBody,
-  ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
@@ -30,9 +28,9 @@ import {
   GetInvoiceUrlQueryDto,
   InvoiceUrlResponseDto,
 } from '../dto';
-import { ContentDispositionEnum, type IUploadedFile } from '@app/shared';
+import { type IUploadedFile, pdfFileValidation } from '@app/shared';
 import { FileFastifyInterceptor } from 'fastify-file-interceptor';
-import { pdfFileValidation } from '@app/shared';
+import { INVOICE_FILE_SIZE } from '../constants/invoice-file-size.constant';
 
 @ApiTags('invoices')
 @Controller('invoices')
@@ -44,7 +42,7 @@ export class InvoiceController {
     FileFastifyInterceptor('file', {
       fileFilter: pdfFileValidation,
       limits: {
-        fileSize: 10 * 1024 * 1024,
+        fileSize: INVOICE_FILE_SIZE,
       },
     }),
   )
@@ -97,7 +95,6 @@ export class InvoiceController {
     summary: 'Get list of invoices',
     description: 'Retrieve a paginated list of invoices with optional filters',
   })
-  @ApiQuery({ name: 'orderId', required: false, type: String })
   @ApiResponse({
     status: 200,
     description: 'List of invoices',
@@ -117,11 +114,6 @@ export class InvoiceController {
   @ApiOperation({
     summary: 'Get invoice by ID',
     description: 'Retrieve a specific invoice by its ID',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Invoice ID',
-    example: '507f1f77bcf86cd799439011',
   })
   @ApiResponse({
     status: 200,
@@ -146,19 +138,6 @@ export class InvoiceController {
     summary: 'Generate pre-signed URL for invoice',
     description:
       'Generate a short-lived pre-signed URL to securely download an invoice PDF without exposing credentials. The URL will expire after the specified time.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Invoice ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiQuery({
-    name: 'disposition',
-    required: false,
-    enum: Object.values(ContentDispositionEnum),
-    description:
-      'Content disposition for the download. "inline" displays in browser, "attachment" forces download.',
-    example: 'inline',
   })
   @ApiResponse({
     status: 200,

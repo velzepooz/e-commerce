@@ -12,9 +12,6 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiBadRequestResponse,
@@ -24,7 +21,7 @@ import {
 import { OrderServiceService } from '../services/order.service';
 import {
   CreateOrderDto,
-  GetListOrdersQueryDto,
+  GetOrdersListQueryDto,
   OrderDto,
   OrderIdParamDto,
   PaginatedOrdersDto,
@@ -103,15 +100,6 @@ export class OrderServiceController {
     summary: 'Update order status',
     description: 'Update the status of an existing order',
   })
-  @ApiParam({
-    name: 'id',
-    description: 'Order identifier',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiBody({
-    type: UpdateOrderStatusDto,
-    description: 'Order status update data',
-  })
   @ApiOkResponse({
     description: 'Order status updated successfully',
     type: OrderDto,
@@ -152,42 +140,13 @@ export class OrderServiceController {
 
   @Get()
   @ApiOperation({
-    summary: 'List orders',
+    summary: 'Get list of orders',
     description:
       'Retrieve a list of orders with optional filtering and pagination',
   })
-  @ApiQuery({
-    name: 'sellerId',
-    required: false,
-    description: 'Filter by seller ID',
-    example: '507f1f77bcf86cd799439013',
-  })
-  @ApiQuery({
-    name: 'customerId',
-    required: false,
-    description: 'Filter by customer ID',
-    example: '507f1f77bcf86cd799439013',
-  })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    description: 'Filter by order status',
-    example: 'CREATED',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Maximum number of orders to return',
-    example: 20,
-  })
-  @ApiQuery({
-    name: 'skip',
-    required: false,
-    description: 'Number of orders to skip',
-    example: 0,
-  })
   @ApiOkResponse({
     description: 'Orders retrieved successfully',
+    type: PaginatedOrdersDto,
   })
   @ApiBadRequestResponse({
     description: 'Validation error',
@@ -197,9 +156,9 @@ export class OrderServiceController {
       error: 'Bad Request',
     },
   })
-  async getListOrders(
-    @Query() query: GetListOrdersQueryDto,
+  async getOrdersList(
+    @Query() query: GetOrdersListQueryDto,
   ): Promise<PaginatedOrdersDto> {
-    return this.orderServiceService.getListOrders(query);
+    return this.orderServiceService.getOrdersList(query);
   }
 }

@@ -6,7 +6,8 @@ import { buildApp } from '../src/main';
 import { createOrderType, OrderFactory } from './factories/order.factory';
 import { App } from 'supertest/types';
 import { Order } from '../src/types/order-repository.types';
-import { OrderStatusEnum } from '../src/enums/order-status.enum';
+import { OrderStatusEnum } from '../../../libs/shared/src/enums/order-status.enum';
+import { OrderStatusEventPublisherService } from '../src/services/order-event-publisher.service';
 
 describe('On OrderController', () => {
   let app: INestApplication;
@@ -398,6 +399,23 @@ describe('On OrderController', () => {
   });
 
   describe('PATCH /orders/:id/status', () => {
+    let orderStatusEventPublisherSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      // Get the actual service instance from the app and spy on it
+      const orderStatusEventPublisherService = app.get(
+        OrderStatusEventPublisherService,
+      );
+      orderStatusEventPublisherSpy = jest.spyOn(
+        orderStatusEventPublisherService,
+        'emitOrderStatusChanged',
+      );
+    });
+
+    afterEach(() => {
+      orderStatusEventPublisherSpy.mockClear();
+    });
+
     it('Should successfully update order status from CREATED to ACCEPTED', async () => {
       const createdOrder = await orderFactory.create({
         status: 'CREATED',
@@ -417,6 +435,11 @@ describe('On OrderController', () => {
         customerId: createdOrder.customerId,
         sellerId: createdOrder.sellerId,
       });
+
+      expect(orderStatusEventPublisherSpy).toHaveBeenCalledWith(
+        createdOrder._id.toString(),
+        'ACCEPTED',
+      );
     });
 
     it('Should successfully update order status from CREATED to REJECTED', async () => {
@@ -433,6 +456,11 @@ describe('On OrderController', () => {
         _id: createdOrder._id.toString(),
         status: 'REJECTED',
       });
+
+      expect(orderStatusEventPublisherSpy).toHaveBeenCalledWith(
+        createdOrder._id.toString(),
+        'REJECTED',
+      );
     });
 
     it('Should successfully update order status from ACCEPTED to SHIPPING_IN_PROGRESS', async () => {
@@ -449,6 +477,11 @@ describe('On OrderController', () => {
         _id: acceptedOrder._id.toString(),
         status: 'SHIPPING_IN_PROGRESS',
       });
+
+      expect(orderStatusEventPublisherSpy).toHaveBeenCalledWith(
+        acceptedOrder._id.toString(),
+        'SHIPPING_IN_PROGRESS',
+      );
     });
 
     it('Should successfully update order status from SHIPPING_IN_PROGRESS to SHIPPED', async () => {
@@ -465,6 +498,11 @@ describe('On OrderController', () => {
         _id: shippingOrder._id.toString(),
         status: 'SHIPPED',
       });
+
+      expect(orderStatusEventPublisherSpy).toHaveBeenCalledWith(
+        shippingOrder._id.toString(),
+        'SHIPPED',
+      );
     });
 
     it('Should return 200 with unchanged order when status is already the requested status', async () => {
@@ -481,6 +519,8 @@ describe('On OrderController', () => {
         _id: createdOrder._id.toString(),
         status: 'CREATED',
       });
+
+      expect(orderStatusEventPublisherSpy).not.toHaveBeenCalled();
     });
 
     it('Should return 200 with unchanged order when status REJECTED is requested again', async () => {
@@ -497,6 +537,8 @@ describe('On OrderController', () => {
         _id: rejectedOrder._id.toString(),
         status: 'REJECTED',
       });
+
+      expect(orderStatusEventPublisherSpy).not.toHaveBeenCalled();
     });
 
     it('Should return 422 when trying invalid transition from CREATED to SHIPPING_IN_PROGRESS', async () => {
@@ -515,6 +557,8 @@ describe('On OrderController', () => {
           'Invalid status transition from CREATED to SHIPPING_IN_PROGRESS',
         error: 'Unprocessable Entity',
       });
+
+      expect(orderStatusEventPublisherSpy).not.toHaveBeenCalled();
     });
 
     it('Should return 422 when trying invalid transition from CREATED to SHIPPED', async () => {
@@ -532,6 +576,8 @@ describe('On OrderController', () => {
         message: 'Invalid status transition from CREATED to SHIPPED',
         error: 'Unprocessable Entity',
       });
+
+      expect(orderStatusEventPublisherSpy).not.toHaveBeenCalled();
     });
 
     it('Should return 422 when trying transition from state REJECTED', async () => {

@@ -1,4 +1,4 @@
-import mongoose, { Collection, FilterQuery, Model } from 'mongoose';
+import mongoose, { Collection, Model } from 'mongoose';
 import { IdType, MongoBaseType } from '../types';
 import { convertToObjectId } from '../utils';
 
@@ -11,12 +11,6 @@ export abstract class MongoBaseRepository<TModel extends MongoBaseType> {
 
   async findById(id: IdType): Promise<TModel | null> {
     return this._model.findById(convertToObjectId(id)).lean<TModel>();
-  }
-
-  async findByIds<TResult = TModel>(ids: IdType[]): Promise<TResult[]> {
-    return this._model
-      .find({ _id: { $in: ids.map(convertToObjectId) } })
-      .lean<TResult[]>();
   }
 
   async create(data: Partial<TModel>): Promise<TModel> {
@@ -44,58 +38,6 @@ export abstract class MongoBaseRepository<TModel extends MongoBaseType> {
       .lean<TModel>();
   }
 
-  async update(id: IdType, data: Partial<TModel>): Promise<TModel | null> {
-    return this._model
-      .findOneAndUpdate(
-        { _id: convertToObjectId(id) },
-        { ...data },
-        { new: true },
-      )
-      .lean<TModel>();
-  }
-
-  async updateMany(
-    filter: Partial<TModel>,
-    data: Partial<TModel>,
-  ): Promise<TModel> {
-    return this._model.updateMany(filter, data).lean<TModel>();
-  }
-
-  async updateBulk(
-    updateBulk: {
-      id: IdType;
-      data: Partial<TModel>;
-    }[],
-  ): Promise<void> {
-    const writeData: mongoose.AnyBulkWriteOperation[] = updateBulk.map(
-      ({ id, data }) => ({
-        updateOne: {
-          filter: { _id: convertToObjectId(id) as unknown },
-          update: {
-            ...data,
-          },
-          upsert: true,
-        },
-      }),
-    );
-
-    await this._model.bulkWrite(writeData);
-  }
-
-  delete(ids: IdType[]): Promise<mongoose.mongo.DeleteResult> {
-    return this._model.deleteMany({ _id: ids.map(convertToObjectId) });
-  }
-
-  deleteMany(filter?: FilterQuery<TModel>) {
-    return this._model.deleteMany(filter);
-  }
-
-  async createMany(data: Partial<TModel>[]): Promise<TModel[]> {
-    return await this._model
-      .create(data)
-      .then((res) => res.map((r) => r.toJSON() as TModel));
-  }
-
   /**
    * Create or update a document in the collection.
    * @param data the data to be created or updated
@@ -115,12 +57,6 @@ export abstract class MongoBaseRepository<TModel extends MongoBaseType> {
       .lean();
 
     return doc as TModel;
-  }
-
-  async exists(item: Partial<TModel>) {
-    const doc = await this._model.exists(item);
-
-    return !!doc;
   }
 
   generateObjectId(): string {
