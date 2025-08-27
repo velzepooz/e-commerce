@@ -37,7 +37,7 @@
     "amqplib": "^0.10.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
-    "fastify": "^5.5.0",
+    "fastify": "^5.4.0",
     "fastify-file-interceptor": "^1.0.9",
     "mongoose": "^8.17.2",
     "reflect-metadata": "^0.2.2",

@@ -47,7 +47,8 @@ build:
 	@echo Build complete
 
 # Start development mode
-dev: dev-order dev-invoice
+dev:
+	@make dev-order & make dev-invoice & wait
 
 # Start order service in development mode
 dev-order:
